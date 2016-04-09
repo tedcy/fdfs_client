@@ -3,30 +3,35 @@ package fdfs_client
 import (
 	"testing"
 	"sync"
-	//"time"
+	"time"
 	"fmt"
 )
 
 func TestUpload(t *testing.T) {
 	client, err := NewClientWithConfig("fdfs.conf")
 	if err != nil {
-		t.Log(err.Error())
+		client.Destory()
+		fmt.Println(err.Error())
 		return
     }
+	defer client.Destory()
 	fileId, err := client.UploadByFilename("client_test.go")
 	if err != nil {
-		t.Log(err.Error())
+		client.Destory()
+		fmt.Println(err.Error())
 		return
     }
-	t.Log(fileId.GroupName + "/" + fileId.RemoteFileName)
+	fmt.Println(fileId.GroupName + "/" + fileId.RemoteFileName)
 }
 
 func TestUpload100(t *testing.T) {
 	client, err := NewClientWithConfig("fdfs.conf")
 	if err != nil {
-		t.Log(err.Error())
+		client.Destory()
+		fmt.Println(err.Error())
 		return
     }
+	defer client.Destory()
 	var wg sync.WaitGroup
 	for i := 0;i != 100;i++{
 		wg.Add(1)
@@ -40,8 +45,8 @@ func TestUpload100(t *testing.T) {
 				}
 				fmt.Println(fileId.GroupName + "/" + fileId.RemoteFileName)
             }
-			//time.Sleep(time.Second * 10)
 		}()
     }
+	time.Sleep(time.Second * 200)
 	wg.Wait()	
 }

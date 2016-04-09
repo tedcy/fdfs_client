@@ -6,12 +6,6 @@ import (
 	"net"
 )
 
-type Header struct {
-	pkgLen int64
-	cmd    int8
-	status int8
-}
-
 type TrackerUploadBody struct {
 	groupName      string
 	ipAddr         string
@@ -26,47 +20,11 @@ type TrackerUploadTask struct {
 
 func (this *TrackerUploadTask) SendHeader(conn net.Conn) error {
 	this.cmd = 101
-
-	buffer := new(bytes.Buffer)
-	nouseBytes := make([]byte, 8)
-	if _, err := buffer.Write(nouseBytes); err != nil {
-		return err
-	}
-	if err := buffer.WriteByte(byte(this.cmd)); err != nil {
-		return err
-	}
-	if err := buffer.WriteByte(byte(nouseBytes[0])); err != nil {
-		return err
-	}
-
-	if _, err := conn.Write(buffer.Bytes()); err != nil {
-		return err
-	}
-	return nil
+	return this.Header.SendHeader(conn)
 }
 
 func (this *TrackerUploadTask) RecvHeader(conn net.Conn) error {
-	buf := make([]byte, 10)
-	if _, err := conn.Read(buf); err != nil {
-		return err
-	}
-
-	buffer := bytes.NewBuffer(buf)
-
-	if err := binary.Read(buffer, binary.BigEndian, &this.pkgLen); err != nil {
-		return err
-	}
-	cmd, err := buffer.ReadByte()
-	if err != nil {
-		return err
-	}
-	status, err := buffer.ReadByte()
-	if err != nil {
-		return err
-	}
-	this.cmd = int8(cmd)
-	this.status = int8(status)
-	return nil
+	return this.Header.RecvHeader(conn)
 }
 
 func (this *TrackerUploadTask) RecvBody(conn net.Conn) error {

@@ -24,16 +24,10 @@ func (this *StorageUploadTask) SendHeader(conn net.Conn, fileInfo *FileInfo, sto
 	this.fileSize = fileInfo.fileSize
 	this.storagePathIndex = storagePathIndex
 
+	if err := this.Header.SendHeader(conn);err != nil {
+		return err
+    }
 	buffer := new(bytes.Buffer)
-	if err := binary.Write(buffer, binary.BigEndian, this.pkgLen); err != nil {
-		return err
-	}
-	if err := buffer.WriteByte(byte(this.cmd)); err != nil {
-		return err
-	}
-	if err := buffer.WriteByte(byte(0x00)); err != nil {
-		return err
-	}
 	if err := buffer.WriteByte(byte(this.storagePathIndex)); err != nil {
 		return err
 	}
@@ -65,23 +59,9 @@ func (this *StorageUploadTask) SendFile(conn net.Conn, fileInfo *FileInfo) error
 }
 
 func (this *StorageUploadTask) RecvFileId(conn net.Conn) (*FileId, error) {
-	buf := make([]byte, 10)
-	if _, err := conn.Read(buf); err != nil {
-		return nil, err
-	}
-
-	buffer := bytes.NewBuffer(buf)
-	if err := binary.Read(buffer, binary.BigEndian, &this.pkgLen); err != nil {
-		return nil, err
-	}
-	if _, err := buffer.ReadByte(); err != nil {
-		return nil, err
-	}
-	status, err := buffer.ReadByte()
-	if err != nil {
-		return nil, err
-	}
-	this.status = int8(status)
+	if err := this.RecvHeader(conn);err != nil {
+		return nil,err
+    }
 
 	if this.status != 0 {
 		return nil, fmt.Errorf("recv file id status != 0")
@@ -93,12 +73,12 @@ func (this *StorageUploadTask) RecvFileId(conn net.Conn) (*FileId, error) {
 		return nil, fmt.Errorf("recv file id pkgLen > 100,can't be so long")
 	}
 
-	buf = make([]byte, this.pkgLen)
+	buf := make([]byte, this.pkgLen)
 	if _,err := conn.Read(buf);err != nil {
 		return nil,err
     }
 
-	buffer = bytes.NewBuffer(buf)
+	buffer := bytes.NewBuffer(buf)
 	groupName, err := ReadCStrFromByteBuffer(buffer, 16)
 	if err != nil {
 		return nil, err

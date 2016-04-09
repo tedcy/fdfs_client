@@ -38,6 +38,15 @@ func NewClientWithConfig(configName string) (*Client, error) {
 	return client, nil
 }
 
+func (this *Client) Destory() {
+	for _, pool := range this.trackerPools {
+		pool.Destory()
+    }
+	for _, pool := range this.storagePools {
+		pool.Destory()
+    }
+}
+
 func (this *Client) QueryStorageInfoWithTracker(conn net.Conn) (*StorageInfo, error) {
 	task := &TrackerUploadTask{}
 	if err := task.SendHeader(conn); err != nil {
@@ -116,7 +125,6 @@ func (this *Client) UploadByFilename(fileName string) (*FileId, error) {
         }
 	}()
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 
@@ -163,7 +171,6 @@ func (this *Client) GetStorageConn(storageInfo *StorageInfo) (net.Conn, error) {
 		this.storagePoolLock.Unlock()
 		return storagePool.get()
 	}
-	fmt.Println("NewConnPool",storageInfo.addr,this,storagePool,ok)
 	storagePool, err := NewConnPool(storageInfo.addr,this.config.maxConns)
 	if err != nil {
 		this.storagePoolLock.Unlock()
