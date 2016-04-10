@@ -10,15 +10,17 @@ import (
 func TestUpload(t *testing.T) {
 	client, err := NewClientWithConfig("fdfs.conf")
 	if err != nil {
-		client.Destory()
 		fmt.Println(err.Error())
+		if client != nil {
+			client.Destory()
+        }
 		return
     }
 	defer client.Destory()
 	fileId, err := client.UploadByFilename("client_test.go")
 	if err != nil {
-		client.Destory()
 		fmt.Println(err.Error())
+		client.Destory()
 		return
     }
 	fmt.Println(fileId.GroupName + "/" + fileId.RemoteFileName)
@@ -27,8 +29,10 @@ func TestUpload(t *testing.T) {
 func TestUpload100(t *testing.T) {
 	client, err := NewClientWithConfig("fdfs.conf")
 	if err != nil {
-		client.Destory()
 		fmt.Println(err.Error())
+		if client != nil {
+			client.Destory()
+        }
 		return
     }
 	defer client.Destory()

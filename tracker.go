@@ -6,28 +6,27 @@ import (
 	"net"
 )
 
-type TrackerUploadBody struct {
+type TrackerStorageInfo struct {
 	groupName      string
 	ipAddr         string
 	port           int64
 	storePathIndex int8
 }
 
-type TrackerUploadTask struct {
+type TrackerTask struct {
 	Header
-	TrackerUploadBody
+	TrackerStorageInfo
 }
 
-func (this *TrackerUploadTask) SendHeader(conn net.Conn) error {
-	this.cmd = 101
+func (this *TrackerTask) SendHeader(conn net.Conn) error {
 	return this.Header.SendHeader(conn)
 }
 
-func (this *TrackerUploadTask) RecvHeader(conn net.Conn) error {
+func (this *TrackerTask) RecvHeader(conn net.Conn) error {
 	return this.Header.RecvHeader(conn)
 }
 
-func (this *TrackerUploadTask) RecvBody(conn net.Conn) error {
+func (this *TrackerTask) RecvStorageInfo(conn net.Conn) error {
 	buf := make([]byte, 40)
 	if _, err := conn.Read(buf); err != nil {
 		return err

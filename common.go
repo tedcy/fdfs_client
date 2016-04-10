@@ -8,8 +8,14 @@ import (
 )
 
 const (
-	FDFS_PROTO_CMD_ACTIVE_TEST			= 111
-	TRACKER_PROTO_CMD_RESP				= 100
+	TRACKER_PROTO_CMD_SERVICE_QUERY_STORE_WITHOUT_GROUP_ONE = 101
+	TRACKER_PROTO_CMD_SERVICE_QUERY_FETCH_ONE				= 102
+	FDFS_PROTO_CMD_ACTIVE_TEST								= 111
+	TRACKER_PROTO_CMD_RESP									= 100
+)
+
+const (
+	FDFS_GROUP_NAME_MAX_LEN									= 16
 )
 
 type FileId struct {
@@ -74,4 +80,12 @@ func (this *Header) RecvHeader(conn net.Conn) error {
 	this.cmd = int8(cmd)
 	this.status = int8(status)
 	return nil
+}
+
+func SplitFileId(string fileId) (string,string,err) {
+	str := strings.SplitN(fileId,"/",2)
+	if len(str) < 2 {
+		return "","",fmt.Errorf("invalid fildId")
+    }
+	return str[0],str[1],nil
 }

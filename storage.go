@@ -93,3 +93,16 @@ func (this *StorageUploadTask) RecvFileId(conn net.Conn) (*FileId, error) {
 		RemoteFileName: remoteFileName,
 	}, nil
 }
+
+type StorageDownloadTask struct {
+	Header
+}
+
+func (this *StorageDownloadTask) SendHeader(conn net.Conn,groupName string,remoteFilename string,offset int64,downloadBytes int64) (int64,error){
+	this.cmd = 14
+	this.pkgLen = len(remoteFilename) + 32
+}
+
+func (this *StorageDownloadTask) RecvFile(conn net.Conn,localFilename string) {
+
+}
