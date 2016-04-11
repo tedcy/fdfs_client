@@ -10,10 +10,14 @@ import (
 )
 
 const (
+	TRACKER_PROTO_CMD_RESP									= 100
 	TRACKER_PROTO_CMD_SERVICE_QUERY_STORE_WITHOUT_GROUP_ONE = 101
 	TRACKER_PROTO_CMD_SERVICE_QUERY_FETCH_ONE				= 102
+
+	STORAGE_PROTO_CMD_UPLOAD_FILE							= 11
+	STORAGE_PROTO_CMD_DELETE_FILE							= 12
+	STORAGE_PROTO_CMD_DOWNLOAD_FILE							= 14
 	FDFS_PROTO_CMD_ACTIVE_TEST								= 111
-	TRACKER_PROTO_CMD_RESP									= 100
 )
 
 const (
@@ -34,6 +38,48 @@ type FileInfo struct {
 	fileSize    int64
 	file        *os.File
 	fileExtName string
+}
+
+func newFileInfo(fileName string) (*FileInfo, error) {
+	file, err := os.Open(fileName)
+	if err != nil {
+		return nil, err
+	}
+	stat, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if int(stat.Size()) == 0 {
+		return nil, fmt.Errorf("file %q size is zero", fileName)
+	}
+	var fileExtName string
+	index := strings.LastIndexByte(fileName, '.')
+	if index != -1 {
+		fileExtName = fileName[index+1:]
+		if len(fileExtName) > 6 {
+			fileExtName = fileExtName[:6]
+		}
+	}
+	return &FileInfo{
+		fileSize:    stat.Size(),
+		file:        file,
+		fileExtName: fileExtName,
+	}, nil
+}
+
+func (this *FileInfo) Close() {
+	if this == nil {
+		return
+    }
+	if this.file != nil {
+		this.file.Close()
+    }
+	return
+}
+
+type queryResult interface {
+	sendReq(net.Conn)
+	recvRes(net.Conn)
 }
 
 type Header struct {

@@ -3,8 +3,6 @@ package fdfs_client
 import (
 	"fmt"
 	"net"
-	"os"
-	"strings"
 	"sync"
 	"bytes"
 )
@@ -49,12 +47,8 @@ func (this *Client) Destory() {
 }
 
 func (this *Client) UploadByFilename(fileName string) (*FileId, error) {
-	fileInfo, err := this.checkFileInfo(fileName)
-	defer func() {
-		if fileInfo != nil && fileInfo.file != nil{
-			fileInfo.file.Close()
-        }
-	}()
+	fileInfo, err := newFileInfo(fileName)
+	defer fileInfo.Close()
 	if err != nil {
 		return nil, err
 	}
@@ -65,6 +59,25 @@ func (this *Client) UploadByFilename(fileName string) (*FileId, error) {
 	}
 
 	return this.uploadFileToStorage(fileInfo, storageInfo)
+}
+
+func (this *Client) uploadFileToStorage(fileInfo *FileInfo, storageInfo *StorageInfo) (*FileId, error) {
+	storageConn, err := this.getStorageConn(storageInfo)
+	defer storageConn.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	task := &StorageUploadTask{}
+	err = task.SendHeader(storageConn, fileInfo, storageInfo.storagePathIndex)
+	if err != nil {
+		return nil, err
+	}
+	err = task.SendFile(storageConn, fileInfo)
+	if err != nil {
+		return nil, err
+	}
+	return task.RecvFileId(storageConn)
 }
 
 func (this *Client) DownloadByFileId(fileId string,localFilename string) error {
@@ -78,6 +91,25 @@ func (this *Client) DownloadByFileId(fileId string,localFilename string) error {
 	}
 
 	return this.downloadFileFromStorage(storageInfo,groupName,remoteFilename, localFilename,0,0)
+}
+
+func (this *Client) downloadFileFromStorage(storageInfo *StorageInfo,groupName string,remoteFilename string,localFilename string,offset int64,downloadBytes int64) error {
+	storageConn, err := this.getStorageConn(storageInfo)
+	defer storageConn.Close()
+	if err != nil {
+		return err
+	}
+
+	task := &StorageDownloadTask{}
+	err = task.SendHeader(storageConn, groupName, remoteFilename, offset, downloadBytes)
+	if err != nil {
+		return err
+	}
+	if err := task.RecvFile(storageConn, localFilename);err != nil{
+		return err
+	}
+
+	return nil
 }
 
 func (this *Client) DeleteByFileId(fileId string) error {
@@ -95,10 +127,10 @@ func (this *Client) DeleteByFileId(fileId string) error {
 
 func (this *Client) deleteFileFromStorage(storageInfo *StorageInfo,groupName string,remoteFilename string) error {
 	storageConn, err := this.getStorageConn(storageInfo)
+	defer storageConn.Close()
 	if err != nil {
 		return err
 	}
-	defer storageConn.Close()
 
 	task := &StorageDeleteTask{}
 	err = task.SendHeader(storageConn, groupName, remoteFilename)
@@ -106,25 +138,6 @@ func (this *Client) deleteFileFromStorage(storageInfo *StorageInfo,groupName str
 		return err
 	}
 	if err := task.RecvResult(storageConn);err != nil{
-		return err
-	}
-
-	return nil
-}
-
-func (this *Client) downloadFileFromStorage(storageInfo *StorageInfo,groupName string,remoteFilename string,localFilename string,offset int64,downloadBytes int64) error {
-	storageConn, err := this.getStorageConn(storageInfo)
-	if err != nil {
-		return err
-	}
-	defer storageConn.Close()
-
-	task := &StorageDownloadTask{}
-	err = task.SendHeader(storageConn, groupName, remoteFilename, offset, downloadBytes)
-	if err != nil {
-		return err
-	}
-	if err := task.RecvFile(storageConn, localFilename);err != nil{
 		return err
 	}
 
@@ -139,10 +152,10 @@ func (this *Client) queryStorageInfoWithTracker(cmd int8,groupName string,remote
 	task.cmd = cmd
 	
 	trackerConn, err := this.getTrackerConn()
+	defer trackerConn.Close()
 	if err != nil {
 		return nil, err
 	}
-	defer trackerConn.Close()
 
 	if err := task.SendHeader(trackerConn); err != nil {
 		return nil, err
@@ -174,52 +187,6 @@ func (this *Client) queryStorageInfoWithTracker(cmd int8,groupName string,remote
 		addr:             fmt.Sprintf("%s:%d", task.ipAddr, task.port),
 		storagePathIndex: task.storePathIndex,
 	}, nil
-}
-
-func (this *Client) checkFileInfo(fileName string) (*FileInfo, error) {
-	file, err := os.Open(fileName)
-	if err != nil {
-		return nil, err
-	}
-	stat, err := file.Stat()
-	if err != nil {
-		return nil, err
-	}
-	if int(stat.Size()) == 0 {
-		return nil, fmt.Errorf("file %q size is zero", fileName)
-	}
-	var fileExtName string
-	index := strings.LastIndexByte(fileName, '.')
-	if index != -1 {
-		fileExtName = fileName[index+1:]
-		if len(fileExtName) > 6 {
-			fileExtName = fileExtName[:6]
-		}
-	}
-	return &FileInfo{
-		fileSize:    stat.Size(),
-		file:        file,
-		fileExtName: fileExtName,
-	}, nil
-}
-
-func (this *Client) uploadFileToStorage(fileInfo *FileInfo, storageInfo *StorageInfo) (*FileId, error) {
-	storageConn, err := this.getStorageConn(storageInfo)
-	if err != nil {
-		return nil, err
-	}
-	defer storageConn.Close()
-
-	task := &StorageUploadTask{}
-	err = task.SendHeader(storageConn, fileInfo, storageInfo.storagePathIndex)
-	if err != nil {
-		return nil, err
-	}
-	err = task.SendFile(storageConn, fileInfo)
-	if err != nil {
-		return nil, err
-	}
-	return task.RecvFileId(storageConn)
 }
 
 func (this *Client) getTrackerConn() (net.Conn, error) {

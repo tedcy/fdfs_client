@@ -14,7 +14,7 @@ type StorageUploadTask struct {
 }
 
 func (this *StorageUploadTask) SendHeader(conn net.Conn, fileInfo *FileInfo, storagePathIndex int8) error {
-	this.cmd = 11
+	this.cmd = STORAGE_PROTO_CMD_UPLOAD_FILE
 	this.pkgLen = fileInfo.fileSize + 15
 
 	if err := this.Header.SendHeader(conn);err != nil {
@@ -86,7 +86,7 @@ type StorageDownloadTask struct {
 }
 
 func (this *StorageDownloadTask) SendHeader(conn net.Conn,groupName string,remoteFilename string,offset int64,downloadBytes int64) error{
-	this.cmd = 14
+	this.cmd = STORAGE_PROTO_CMD_DOWNLOAD_FILE
 	this.pkgLen = int64(len(remoteFilename) + 32)
 
 	if err := this.Header.SendHeader(conn);err != nil {
@@ -152,7 +152,7 @@ type StorageDeleteTask struct {
 }
 
 func (this *StorageDeleteTask) SendHeader(conn net.Conn,groupName string,remoteFilename string) error{
-	this.cmd = 12
+	this.cmd = STORAGE_PROTO_CMD_DELETE_FILE
 	this.pkgLen = int64(len(remoteFilename) + 16)
 
 	if err := this.Header.SendHeader(conn);err != nil {
