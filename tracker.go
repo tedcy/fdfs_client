@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"net"
+	"fmt"
 )
 
 type TrackerStorageInfo struct {
@@ -23,11 +24,17 @@ func (this *TrackerTask) SendHeader(conn net.Conn) error {
 }
 
 func (this *TrackerTask) RecvHeader(conn net.Conn) error {
-	return this.Header.RecvHeader(conn)
+	if err := this.Header.RecvHeader(conn);err != nil {
+		return fmt.Errorf("TrackerTask RecvHeader %v",err)
+    }
+	return nil
 }
 
-func (this *TrackerTask) RecvStorageInfo(conn net.Conn) error {
-	buf := make([]byte, 40)
+func (this *TrackerTask) RecvStorageInfo(conn net.Conn,pkgLen int) error {
+	if pkgLen != 39 && pkgLen != 40 {
+		return fmt.Errorf("RecvStorageInfo pkgLen %d invaild",pkgLen)
+    }
+	buf := make([]byte, pkgLen)
 	if _, err := conn.Read(buf); err != nil {
 		return err
 	}
@@ -45,10 +52,12 @@ func (this *TrackerTask) RecvStorageInfo(conn net.Conn) error {
 	if err := binary.Read(buffer, binary.BigEndian, &this.port); err != nil {
 		return err
 	}
-	storePathIndex, err := buffer.ReadByte()
-	if err != nil {
-		return err
-	}
-	this.storePathIndex = int8(storePathIndex)
+	if pkgLen == 40 {
+		storePathIndex, err := buffer.ReadByte()
+		if err != nil {
+			return err
+		}
+		this.storePathIndex = int8(storePathIndex)
+    }
 	return nil
 }

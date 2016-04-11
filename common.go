@@ -5,6 +5,8 @@ import (
 	"net"
 	"bytes"
 	"encoding/binary"
+	"strings"
+	"fmt"
 )
 
 const (
@@ -45,12 +47,8 @@ func (this *Header) SendHeader(conn net.Conn) error {
 	if err := binary.Write(buffer, binary.BigEndian, this.pkgLen); err != nil {
 		return err
 	}
-	if err := buffer.WriteByte(byte(this.cmd)); err != nil {
-		return err
-	}
-	if err := buffer.WriteByte(byte(this.status)); err != nil {
-		return err
-	}
+	buffer.WriteByte(byte(this.cmd))
+	buffer.WriteByte(byte(this.status))
 
 	if _, err := conn.Write(buffer.Bytes()); err != nil {
 		return err
@@ -77,12 +75,15 @@ func (this *Header) RecvHeader(conn net.Conn) error {
 	if err != nil {
 		return err
 	}
+	if status != 0 {
+		return fmt.Errorf("recv resp status != 0")
+    }
 	this.cmd = int8(cmd)
 	this.status = int8(status)
 	return nil
 }
 
-func SplitFileId(string fileId) (string,string,err) {
+func SplitFileId(fileId string) (string,string,error) {
 	str := strings.SplitN(fileId,"/",2)
 	if len(str) < 2 {
 		return "","",fmt.Errorf("invalid fildId")

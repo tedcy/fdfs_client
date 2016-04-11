@@ -59,7 +59,7 @@ func (this *Client) UploadByFilename(fileName string) (*FileId, error) {
 		return nil, err
 	}
 
-	storageInfo, err := this.queryStorageInfoWithTracker(TRACKER_PROTO_CMD_SERVICE_QUERY_STORE_WITHOUT_GROUP_ONE,"")
+	storageInfo, err := this.queryStorageInfoWithTracker(TRACKER_PROTO_CMD_SERVICE_QUERY_STORE_WITHOUT_GROUP_ONE,"","")
 	if err != nil {
 		return nil, err
 	}
@@ -77,10 +77,10 @@ func (this *Client) DownloadByFileId(fileId string,localFilename string) error {
 		return err
 	}
 
-	return this.downloadFileFromStorage(storageInfo,groupName,remoteFilename, localFilename,0,-1)
+	return this.downloadFileFromStorage(storageInfo,groupName,remoteFilename, localFilename,0,0)
 }
 
-func (this *Client) downloadFileFromStorage(straogeInfo *StorageInfo,groupName string,remoteFilename string,localFilename string,offset int64,downloadBytes int64) error {
+func (this *Client) downloadFileFromStorage(storageInfo *StorageInfo,groupName string,remoteFilename string,localFilename string,offset int64,downloadBytes int64) error {
 	storageConn, err := this.getStorageConn(storageInfo)
 	if err != nil {
 		return err
@@ -88,12 +88,11 @@ func (this *Client) downloadFileFromStorage(straogeInfo *StorageInfo,groupName s
 	defer storageConn.Close()
 
 	task := &StorageDownloadTask{}
-	err = task.SendHeader(storageConn, fileId, offset, downloadBytes)
+	err = task.SendHeader(storageConn, groupName, remoteFilename, offset, downloadBytes)
 	if err != nil {
 		return err
 	}
-	err = task.RecvFile(storageConn, localFilename)
-	if err != nil {
+	if err := task.RecvFile(storageConn, localFilename);err != nil{
 		return err
 	}
 
@@ -103,7 +102,7 @@ func (this *Client) downloadFileFromStorage(straogeInfo *StorageInfo,groupName s
 func (this *Client) queryStorageInfoWithTracker(cmd int8,groupName string,remoteFilename string) (*StorageInfo, error) {
 	task := &TrackerTask{}
 	if groupName != "" {
-		task.pkgLen = FDFS_GROUP_NAME_MAX_LEN + len(remoteFilename)
+		task.pkgLen = int64(FDFS_GROUP_NAME_MAX_LEN + len(remoteFilename))
     }
 	task.cmd = cmd
 	
@@ -122,10 +121,11 @@ func (this *Client) queryStorageInfoWithTracker(cmd int8,groupName string,remote
 		var bufferGroupName [16]byte
 		for i := 0; i < len(byteGroupName);i++ {
 			bufferGroupName[i] = byteGroupName[i]
+		}
 		buffer.Write(bufferGroupName[:])
 		buffer.WriteString(remoteFilename)
-		if _, err := conn.Write(buffer.Bytes()); err != nil {
-			return err
+		if _, err := trackerConn.Write(buffer.Bytes()); err != nil {
+			return nil, err
 		}
     }
 	if err := task.RecvHeader(trackerConn); err != nil {
@@ -135,10 +135,7 @@ func (this *Client) queryStorageInfoWithTracker(cmd int8,groupName string,remote
 	if task.status != 0 {
 		return nil, fmt.Errorf("tracker task status %v != 0", task.status)
 	}
-	if task.pkgLen != 40 {
-		return nil, fmt.Errorf("tracker task pkgLen %v != 0", task.status)
-	}
-	if err := task.RecvStorageInfo(trackerConn); err != nil {
+	if err := task.RecvStorageInfo(trackerConn,int(task.pkgLen)); err != nil {
 		return nil, err
 	}
 	return &StorageInfo{
