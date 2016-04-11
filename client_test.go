@@ -29,6 +29,11 @@ func TestUpload(t *testing.T) {
 		client.Destory()
 		return
     }
+	if err := client.DeleteByFileId(fileId.GroupName + "/" + fileId.RemoteFileName);err != nil {
+		fmt.Println(err.Error())
+		client.Destory()
+		return
+    }
 }
 
 func TestUpload100(t *testing.T) {

@@ -9,37 +9,29 @@ import (
 	"bufio"
 )
 
-type StorageUploadHeader struct {
-	Header
-	storagePathIndex int8
-	fileSize         int64
-	fileExtName      [6]byte
-}
-
 type StorageUploadTask struct {
-	StorageUploadHeader
+	Header
 }
 
 func (this *StorageUploadTask) SendHeader(conn net.Conn, fileInfo *FileInfo, storagePathIndex int8) error {
 	this.cmd = 11
 	this.pkgLen = fileInfo.fileSize + 15
-	this.fileSize = fileInfo.fileSize
-	this.storagePathIndex = storagePathIndex
 
 	if err := this.Header.SendHeader(conn);err != nil {
 		return err
     }
 	buffer := new(bytes.Buffer)
-	buffer.WriteByte(byte(this.storagePathIndex))
-	if err := binary.Write(buffer, binary.BigEndian, this.fileSize); err != nil {
+	buffer.WriteByte(byte(storagePathIndex))
+	if err := binary.Write(buffer, binary.BigEndian, fileInfo.fileSize); err != nil {
 		return err
 	}
 
 	byteFileExtName := []byte(fileInfo.fileExtName)
+	var bufferFileExtName [6]byte
 	for i := 0; i < len(byteFileExtName); i++ {
-		this.fileExtName[i] = byteFileExtName[i]
+		bufferFileExtName[i] = byteFileExtName[i]
 	}
-	buffer.Write(this.fileExtName[:])
+	buffer.Write(bufferFileExtName[:])
 
 	if _, err := conn.Write(buffer.Bytes()); err != nil {
 		return err
@@ -153,4 +145,33 @@ func (this *StorageDownloadTask) RecvBuffer(conn net.Conn) ([]byte,error){
 		return nil,fmt.Errorf("StorageDownloadTask RecvBuffer %v",err)
     }
 	return writer.Bytes(),nil
+}
+
+type StorageDeleteTask struct {
+	Header
+}
+
+func (this *StorageDeleteTask) SendHeader(conn net.Conn,groupName string,remoteFilename string) error{
+	this.cmd = 12
+	this.pkgLen = int64(len(remoteFilename) + 16)
+
+	if err := this.Header.SendHeader(conn);err != nil {
+		return err
+    }
+	buffer := new(bytes.Buffer)
+	byteGroupName := []byte(groupName)
+	var bufferGroupName [16]byte
+	for i := 0; i < len(byteGroupName);i++ {
+		bufferGroupName[i] = byteGroupName[i]
+	}
+	buffer.Write(bufferGroupName[:])
+	buffer.WriteString(remoteFilename)
+	if _, err := conn.Write(buffer.Bytes()); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (this *StorageDeleteTask) RecvResult(conn net.Conn) error {
+	return this.RecvHeader(conn)
 }

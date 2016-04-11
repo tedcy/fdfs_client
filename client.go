@@ -80,6 +80,38 @@ func (this *Client) DownloadByFileId(fileId string,localFilename string) error {
 	return this.downloadFileFromStorage(storageInfo,groupName,remoteFilename, localFilename,0,0)
 }
 
+func (this *Client) DeleteByFileId(fileId string) error {
+	groupName, remoteFilename, err := SplitFileId(fileId)
+	if err != nil {
+		return err
+	}
+	storageInfo, err := this.queryStorageInfoWithTracker(TRACKER_PROTO_CMD_SERVICE_QUERY_FETCH_ONE,groupName,remoteFilename)
+	if err != nil {
+		return err
+	}
+
+	return this.deleteFileFromStorage(storageInfo,groupName,remoteFilename)
+}
+
+func (this *Client) deleteFileFromStorage(storageInfo *StorageInfo,groupName string,remoteFilename string) error {
+	storageConn, err := this.getStorageConn(storageInfo)
+	if err != nil {
+		return err
+	}
+	defer storageConn.Close()
+
+	task := &StorageDeleteTask{}
+	err = task.SendHeader(storageConn, groupName, remoteFilename)
+	if err != nil {
+		return err
+	}
+	if err := task.RecvResult(storageConn);err != nil{
+		return err
+	}
+
+	return nil
+}
+
 func (this *Client) downloadFileFromStorage(storageInfo *StorageInfo,groupName string,remoteFilename string,localFilename string,offset int64,downloadBytes int64) error {
 	storageConn, err := this.getStorageConn(storageInfo)
 	if err != nil {
