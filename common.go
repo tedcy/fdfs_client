@@ -78,8 +78,8 @@ func (this *FileInfo) Close() {
 }
 
 type queryResult interface {
-	sendReq(net.Conn)
-	recvRes(net.Conn)
+	sendReq(net.Conn) error
+	recvRes(net.Conn) error
 }
 
 type Header struct {

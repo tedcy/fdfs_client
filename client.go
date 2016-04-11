@@ -69,15 +69,17 @@ func (this *Client) uploadFileToStorage(fileInfo *FileInfo, storageInfo *Storage
 	}
 
 	task := &StorageUploadTask{}
-	err = task.SendHeader(storageConn, fileInfo, storageInfo.storagePathIndex)
+	task.fileInfo = fileInfo
+	task.storagePathIndex = storageInfo.storagePathIndex
+	err = task.sendReq(storageConn)
 	if err != nil {
 		return nil, err
 	}
-	err = task.SendFile(storageConn, fileInfo)
+	err = task.recvRes(storageConn)
 	if err != nil {
 		return nil, err
 	}
-	return task.RecvFileId(storageConn)
+	return task.fileId,nil
 }
 
 func (this *Client) DownloadByFileId(fileId string,localFilename string) error {
