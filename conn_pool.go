@@ -69,6 +69,9 @@ func NewConnPool(addr string,maxConns int) (*ConnPool, error) {
 }
 
 func (this *ConnPool) Destory() {
+	if this == nil {
+		return
+    }
 	this.finish <- true
 }
 

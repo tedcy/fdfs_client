@@ -11,7 +11,6 @@ import (
 
 type StorageUploadTask struct {
 	Header
-	queryResult
 	//req
 	fileInfo *FileInfo
 	storagePathIndex int8
@@ -88,29 +87,36 @@ func (this *StorageUploadTask) recvRes(conn net.Conn) error {
 
 type StorageDownloadTask struct {
 	Header
+	//req
+	groupName string
+	remoteFilename string
+	offset int64
+	downloadBytes int64
+	//res
+	localFilename string
 }
 
-func (this *StorageDownloadTask) SendHeader(conn net.Conn,groupName string,remoteFilename string,offset int64,downloadBytes int64) error{
+func (this *StorageDownloadTask) sendReq(conn net.Conn) error{
 	this.cmd = STORAGE_PROTO_CMD_DOWNLOAD_FILE
-	this.pkgLen = int64(len(remoteFilename) + 32)
+	this.pkgLen = int64(len(this.remoteFilename) + 32)
 
 	if err := this.Header.SendHeader(conn);err != nil {
 		return err
     }
 	buffer := new(bytes.Buffer)
-	if err := binary.Write(buffer, binary.BigEndian, offset); err != nil {
+	if err := binary.Write(buffer, binary.BigEndian, this.offset); err != nil {
 		return err
 	}
-	if err := binary.Write(buffer, binary.BigEndian, downloadBytes); err != nil {
+	if err := binary.Write(buffer, binary.BigEndian, this.downloadBytes); err != nil {
 		return err
 	}
-	byteGroupName := []byte(groupName)
+	byteGroupName := []byte(this.groupName)
 	var bufferGroupName [16]byte
 	for i := 0; i < len(byteGroupName);i++ {
 		bufferGroupName[i] = byteGroupName[i]
 	}
 	buffer.Write(bufferGroupName[:])
-	buffer.WriteString(remoteFilename)
+	buffer.WriteString(this.remoteFilename)
 	if _, err := conn.Write(buffer.Bytes()); err != nil {
 		return err
 	}
@@ -118,11 +124,11 @@ func (this *StorageDownloadTask) SendHeader(conn net.Conn,groupName string,remot
 	return nil
 }
 
-func (this *StorageDownloadTask) RecvFile(conn net.Conn,localFilename string) error{
+func (this *StorageDownloadTask) recvRes(conn net.Conn) error{
 	if err := this.RecvHeader(conn);err != nil {
 		return fmt.Errorf("StorageDownloadTask RecvFile %v",err)
     }
-	file, err := os.Create(localFilename)
+	file, err := os.Create(this.localFilename)
 	defer file.Close()
 	if err != nil {
 		return err
@@ -154,29 +160,32 @@ func (this *StorageDownloadTask) RecvBuffer(conn net.Conn) ([]byte,error){
 
 type StorageDeleteTask struct {
 	Header
+	//req
+	groupName string
+	remoteFilename string
 }
 
-func (this *StorageDeleteTask) SendHeader(conn net.Conn,groupName string,remoteFilename string) error{
+func (this *StorageDeleteTask) sendReq(conn net.Conn) error{
 	this.cmd = STORAGE_PROTO_CMD_DELETE_FILE
-	this.pkgLen = int64(len(remoteFilename) + 16)
+	this.pkgLen = int64(len(this.remoteFilename) + 16)
 
 	if err := this.Header.SendHeader(conn);err != nil {
 		return err
     }
 	buffer := new(bytes.Buffer)
-	byteGroupName := []byte(groupName)
+	byteGroupName := []byte(this.groupName)
 	var bufferGroupName [16]byte
 	for i := 0; i < len(byteGroupName);i++ {
 		bufferGroupName[i] = byteGroupName[i]
 	}
 	buffer.Write(bufferGroupName[:])
-	buffer.WriteString(remoteFilename)
+	buffer.WriteString(this.remoteFilename)
 	if _, err := conn.Write(buffer.Bytes()); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (this *StorageDeleteTask) RecvResult(conn net.Conn) error {
+func (this *StorageDeleteTask) recvRes(conn net.Conn) error {
 	return this.RecvHeader(conn)
 }

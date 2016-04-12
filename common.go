@@ -77,7 +77,7 @@ func (this *FileInfo) Close() {
 	return
 }
 
-type queryResult interface {
+type task interface {
 	sendReq(net.Conn) error
 	recvRes(net.Conn) error
 }

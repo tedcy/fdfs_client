@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 	"sync"
-	"bytes"
 )
 
 type Client struct {
@@ -38,6 +37,9 @@ func NewClientWithConfig(configName string) (*Client, error) {
 }
 
 func (this *Client) Destory() {
+	if this == nil {
+		return
+    }
 	for _, pool := range this.trackerPools {
 		pool.Destory()
     }
@@ -58,27 +60,14 @@ func (this *Client) UploadByFilename(fileName string) (*FileId, error) {
 		return nil, err
 	}
 
-	return this.uploadFileToStorage(fileInfo, storageInfo)
-}
-
-func (this *Client) uploadFileToStorage(fileInfo *FileInfo, storageInfo *StorageInfo) (*FileId, error) {
-	storageConn, err := this.getStorageConn(storageInfo)
-	defer storageConn.Close()
-	if err != nil {
-		return nil, err
-	}
-
 	task := &StorageUploadTask{}
+	//req
 	task.fileInfo = fileInfo
 	task.storagePathIndex = storageInfo.storagePathIndex
-	err = task.sendReq(storageConn)
-	if err != nil {
+
+	if err := this.doStorage(task, storageInfo);err != nil {
 		return nil, err
-	}
-	err = task.recvRes(storageConn)
-	if err != nil {
-		return nil, err
-	}
+    }
 	return task.fileId,nil
 }
 
@@ -92,26 +81,17 @@ func (this *Client) DownloadByFileId(fileId string,localFilename string) error {
 		return err
 	}
 
-	return this.downloadFileFromStorage(storageInfo,groupName,remoteFilename, localFilename,0,0)
-}
-
-func (this *Client) downloadFileFromStorage(storageInfo *StorageInfo,groupName string,remoteFilename string,localFilename string,offset int64,downloadBytes int64) error {
-	storageConn, err := this.getStorageConn(storageInfo)
-	defer storageConn.Close()
-	if err != nil {
-		return err
-	}
-
 	task := &StorageDownloadTask{}
-	err = task.SendHeader(storageConn, groupName, remoteFilename, offset, downloadBytes)
-	if err != nil {
-		return err
-	}
-	if err := task.RecvFile(storageConn, localFilename);err != nil{
-		return err
-	}
+	//req
+	task.groupName = groupName
+	task.remoteFilename = remoteFilename
+	//task.offset = 0
+	//task.downloadBytes = 0
 
-	return nil
+	//res
+	task.localFilename = localFilename
+
+	return this.doStorage(task, storageInfo)
 }
 
 func (this *Client) DeleteByFileId(fileId string) error {
@@ -124,67 +104,55 @@ func (this *Client) DeleteByFileId(fileId string) error {
 		return err
 	}
 
-	return this.deleteFileFromStorage(storageInfo,groupName,remoteFilename)
+	task := &StorageDeleteTask{}
+	//req
+	task.groupName = groupName
+	task.remoteFilename = remoteFilename
+
+	return this.doStorage(task, storageInfo)
 }
 
-func (this *Client) deleteFileFromStorage(storageInfo *StorageInfo,groupName string,remoteFilename string) error {
+func (this *Client) doTracker(task task) error {
+	trackerConn, err := this.getTrackerConn()
+	defer trackerConn.Close()
+	if err != nil {
+		return err
+	}
+	if err := task.sendReq(trackerConn);err != nil{
+		return err
+    }
+	if err := task.recvRes(trackerConn);err != nil{
+		return err
+    }
+	
+	return nil
+}
+
+func (this *Client) doStorage(task task, storageInfo *StorageInfo) error {
 	storageConn, err := this.getStorageConn(storageInfo)
 	defer storageConn.Close()
 	if err != nil {
 		return err
 	}
-
-	task := &StorageDeleteTask{}
-	err = task.SendHeader(storageConn, groupName, remoteFilename)
-	if err != nil {
+	if err := task.sendReq(storageConn);err != nil{
 		return err
-	}
-	if err := task.RecvResult(storageConn);err != nil{
+    }
+	if err := task.recvRes(storageConn);err != nil{
 		return err
-	}
-
+    }
+	
 	return nil
 }
 
 func (this *Client) queryStorageInfoWithTracker(cmd int8,groupName string,remoteFilename string) (*StorageInfo, error) {
 	task := &TrackerTask{}
-	if groupName != "" {
-		task.pkgLen = int64(FDFS_GROUP_NAME_MAX_LEN + len(remoteFilename))
-    }
 	task.cmd = cmd
-	
-	trackerConn, err := this.getTrackerConn()
-	defer trackerConn.Close()
-	if err != nil {
-		return nil, err
-	}
+	task.groupName = groupName
+	task.remoteFilename = remoteFilename
 
-	if err := task.SendHeader(trackerConn); err != nil {
+	if err := this.doTracker(task);err != nil {
 		return nil, err
-	}
-	if groupName != "" {
-		buffer := new(bytes.Buffer)
-		byteGroupName := []byte(groupName)
-		var bufferGroupName [16]byte
-		for i := 0; i < len(byteGroupName);i++ {
-			bufferGroupName[i] = byteGroupName[i]
-		}
-		buffer.Write(bufferGroupName[:])
-		buffer.WriteString(remoteFilename)
-		if _, err := trackerConn.Write(buffer.Bytes()); err != nil {
-			return nil, err
-		}
     }
-	if err := task.RecvHeader(trackerConn); err != nil {
-		return nil, err
-	}
-
-	if task.status != 0 {
-		return nil, fmt.Errorf("tracker task status %v != 0", task.status)
-	}
-	if err := task.RecvStorageInfo(trackerConn,int(task.pkgLen)); err != nil {
-		return nil, err
-	}
 	return &StorageInfo{
 		addr:             fmt.Sprintf("%s:%d", task.ipAddr, task.port),
 		storagePathIndex: task.storePathIndex,
