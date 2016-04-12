@@ -7,23 +7,23 @@ import (
 	"fmt"
 )
 
-type TrackerStorageInfo struct {
+type trackerStorageInfo struct {
 	groupName			string
 	ipAddr				string
 	port				int64
 	storePathIndex		int8
 }
 
-type TrackerTask struct {
-	Header
+type trackerTask struct {
+	header
 	//req
 	groupName			string
 	remoteFilename		string
 	//res
-	TrackerStorageInfo
+	trackerStorageInfo
 }
 
-func (this *TrackerTask) sendReq(conn net.Conn) error {
+func (this *trackerTask) SendReq(conn net.Conn) error {
 	if this.groupName != "" {
 		this.pkgLen = int64(FDFS_GROUP_NAME_MAX_LEN + len(this.remoteFilename))
     }
@@ -46,7 +46,7 @@ func (this *TrackerTask) sendReq(conn net.Conn) error {
 	return nil
 }
 
-func (this *TrackerTask) recvRes(conn net.Conn) error {
+func (this *trackerTask) RecvRes(conn net.Conn) error {
 	if err := this.RecvHeader(conn);err != nil {
 		return fmt.Errorf("TrackerTask RecvHeader %v",err)
     }
@@ -60,11 +60,11 @@ func (this *TrackerTask) recvRes(conn net.Conn) error {
 
 	buffer := bytes.NewBuffer(buf)
 	var err error
-	this.groupName, err = ReadCStrFromByteBuffer(buffer, 16)
+	this.groupName, err = readCStrFromByteBuffer(buffer, 16)
 	if err != nil {
 		return err
 	}
-	this.ipAddr, err = ReadCStrFromByteBuffer(buffer, 15)
+	this.ipAddr, err = readCStrFromByteBuffer(buffer, 15)
 	if err != nil {
 		return err
 	}

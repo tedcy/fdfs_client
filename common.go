@@ -29,18 +29,18 @@ type FileId struct {
 	RemoteFileName  string
 }
 
-type StorageInfo struct {
+type storageInfo struct {
 	addr             string
 	storagePathIndex int8
 }
 
-type FileInfo struct {
+type fileInfo struct {
 	fileSize    int64
 	file        *os.File
 	fileExtName string
 }
 
-func newFileInfo(fileName string) (*FileInfo, error) {
+func newFileInfo(fileName string) (*fileInfo, error) {
 	file, err := os.Open(fileName)
 	if err != nil {
 		return nil, err
@@ -60,14 +60,14 @@ func newFileInfo(fileName string) (*FileInfo, error) {
 			fileExtName = fileExtName[:6]
 		}
 	}
-	return &FileInfo{
+	return &fileInfo{
 		fileSize:    stat.Size(),
 		file:        file,
 		fileExtName: fileExtName,
 	}, nil
 }
 
-func (this *FileInfo) Close() {
+func (this *fileInfo) Close() {
 	if this == nil {
 		return
     }
@@ -78,17 +78,17 @@ func (this *FileInfo) Close() {
 }
 
 type task interface {
-	sendReq(net.Conn) error
-	recvRes(net.Conn) error
+	SendReq(net.Conn) error
+	RecvRes(net.Conn) error
 }
 
-type Header struct {
+type header struct {
 	pkgLen int64
 	cmd    int8
 	status int8
 }
 
-func (this *Header) SendHeader(conn net.Conn) error {
+func (this *header) SendHeader(conn net.Conn) error {
 	buffer := new(bytes.Buffer)
 	if err := binary.Write(buffer, binary.BigEndian, this.pkgLen); err != nil {
 		return err
@@ -102,7 +102,7 @@ func (this *Header) SendHeader(conn net.Conn) error {
 	return nil
 }
 
-func (this *Header) RecvHeader(conn net.Conn) error {
+func (this *header) RecvHeader(conn net.Conn) error {
 	buf := make([]byte, 10)
 	if _, err := conn.Read(buf); err != nil {
 		return err
@@ -129,7 +129,7 @@ func (this *Header) RecvHeader(conn net.Conn) error {
 	return nil
 }
 
-func SplitFileId(fileId string) (string,string,error) {
+func splitFileId(fileId string) (string,string,error) {
 	str := strings.SplitN(fileId,"/",2)
 	if len(str) < 2 {
 		return "","",fmt.Errorf("invalid fildId")

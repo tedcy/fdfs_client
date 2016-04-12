@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-func ReadCStrFromByteBuffer(buffer *bytes.Buffer, size int) (string, error) {
+func readCStrFromByteBuffer(buffer *bytes.Buffer, size int) (string, error) {
 	buf := make([]byte, size)
 	if _, err := buffer.Read(buf); err != nil {
 		return "", err
@@ -21,11 +21,11 @@ func ReadCStrFromByteBuffer(buffer *bytes.Buffer, size int) (string, error) {
 	return string(buf[0:index]), nil
 }
 
-type Writer interface {
+type writer interface {
 	Write(p []byte)(int, error)
 }
 
-func WriteFromConn(conn net.Conn,writer Writer,size int64) error {
+func writeFromConn(conn net.Conn,writer writer,size int64) error {
 	buf := make([]byte, 4096)
 	sizeRecv,sizeAll := int64(0),size
 	for ;sizeRecv + 4096 <= sizeAll;{

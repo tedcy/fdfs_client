@@ -8,13 +8,13 @@ import (
 	"strconv"
 )
 
-type Config struct {
+type config struct {
 	trackerAddr			[]string
 	maxConns			int
 }
 
-func NewConfig(configName string) (*Config, error) {
-	config := &Config{}
+func newConfig(configName string) (*config, error) {
+	config := &config{}
 	f, err := os.Open(configName)
 	if err != nil {
 		return nil, err 

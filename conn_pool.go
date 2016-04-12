@@ -14,14 +14,14 @@ const (
 
 type pConn struct {
 	net.Conn
-	pool			*ConnPool	
+	pool			*connPool	
 }
 
 func (c pConn) Close() error {
 	return c.pool.put(c)
 }
 
-type ConnPool struct {
+type connPool struct {
 	conns           *list.List
 	addr			string
 	maxConns		int
@@ -30,14 +30,14 @@ type ConnPool struct {
 	finish			chan bool
 }
 
-func NewConnPool(addr string,maxConns int) (*ConnPool, error) {
+func newConnPool(addr string,maxConns int) (*connPool, error) {
 	if maxConns < MAXCONNS_LEAST {
 		return nil,fmt.Errorf("too little maxConns < %d",MAXCONNS_LEAST)
     }
 	if maxConns < 1 {
 		return nil,fmt.Errorf("too little maxConns < 1")
     }
-	connPool := &ConnPool{
+	connPool := &connPool{
 		conns:			list.New(),
 		addr:			addr,
 		maxConns:		maxConns,
@@ -68,20 +68,20 @@ func NewConnPool(addr string,maxConns int) (*ConnPool, error) {
 	return connPool, nil
 }
 
-func (this *ConnPool) Destory() {
+func (this *connPool) Destory() {
 	if this == nil {
 		return
     }
 	this.finish <- true
 }
 
-func (this *ConnPool) CheckConns() error{
+func (this *connPool) CheckConns() error{
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	for e,next := this.conns.Front(),new(list.Element);e != nil;e = next {
 		next = e.Next()
 		conn := e.Value.(pConn)
-		header := &Header{
+		header := &header{
 			cmd:		FDFS_PROTO_CMD_ACTIVE_TEST,
         }
 		if err := header.SendHeader(conn.Conn);err != nil{
@@ -103,7 +103,7 @@ func (this *ConnPool) CheckConns() error{
 	return nil
 }
 
-func (this *ConnPool) makeConn() error{
+func (this *connPool) makeConn() error{
 	conn, err := net.DialTimeout("tcp", this.addr, time.Second * 10)
 	if err != nil {
 		return err
@@ -116,7 +116,7 @@ func (this *ConnPool) makeConn() error{
 	return nil
 }
 
-func (this *ConnPool) get() (net.Conn,error) {
+func (this *connPool) get() (net.Conn,error) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	for {
@@ -136,7 +136,7 @@ func (this *ConnPool) get() (net.Conn,error) {
 	return nil,nil
 }
 
-func (this *ConnPool) put(pConn pConn) error{
+func (this *connPool) put(pConn pConn) error{
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	pConn.pool.conns.PushBack(pConn)
