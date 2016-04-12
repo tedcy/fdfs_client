@@ -3,22 +3,22 @@ package fdfs_client
 import (
 	"bytes"
 	"encoding/binary"
-	"net"
 	"fmt"
+	"net"
 )
 
 type trackerStorageInfo struct {
-	groupName				string
-	ipAddr					string
-	port					int64
-	storePathIndex			int8
+	groupName      string
+	ipAddr         string
+	port           int64
+	storePathIndex int8
 }
 
 type trackerTask struct {
 	header
 	//req
-	groupName				string
-	remoteFilename			string
+	groupName      string
+	remoteFilename string
 	//res
 	trackerStorageInfo
 }
@@ -26,7 +26,7 @@ type trackerTask struct {
 func (this *trackerTask) SendReq(conn net.Conn) error {
 	if this.groupName != "" {
 		this.pkgLen = int64(FDFS_GROUP_NAME_MAX_LEN + len(this.remoteFilename))
-    }
+	}
 	if err := this.SendHeader(conn); err != nil {
 		return err
 	}
@@ -34,7 +34,7 @@ func (this *trackerTask) SendReq(conn net.Conn) error {
 		buffer := new(bytes.Buffer)
 		byteGroupName := []byte(this.groupName)
 		var bufferGroupName [16]byte
-		for i := 0; i < len(byteGroupName);i++ {
+		for i := 0; i < len(byteGroupName); i++ {
 			bufferGroupName[i] = byteGroupName[i]
 		}
 		buffer.Write(bufferGroupName[:])
@@ -42,17 +42,17 @@ func (this *trackerTask) SendReq(conn net.Conn) error {
 		if _, err := conn.Write(buffer.Bytes()); err != nil {
 			return err
 		}
-    }
+	}
 	return nil
 }
 
 func (this *trackerTask) RecvRes(conn net.Conn) error {
-	if err := this.RecvHeader(conn);err != nil {
-		return fmt.Errorf("TrackerTask RecvHeader %v",err)
-    }
+	if err := this.RecvHeader(conn); err != nil {
+		return fmt.Errorf("TrackerTask RecvHeader %v", err)
+	}
 	if this.pkgLen != 39 && this.pkgLen != 40 {
-		return fmt.Errorf("recvStorageInfo pkgLen %d invaild",this.pkgLen)
-    }
+		return fmt.Errorf("recvStorageInfo pkgLen %d invaild", this.pkgLen)
+	}
 	buf := make([]byte, this.pkgLen)
 	if _, err := conn.Read(buf); err != nil {
 		return err
@@ -77,6 +77,6 @@ func (this *trackerTask) RecvRes(conn net.Conn) error {
 			return err
 		}
 		this.storePathIndex = int8(storePathIndex)
-    }
+	}
 	return nil
 }

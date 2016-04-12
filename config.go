@@ -4,20 +4,20 @@ import (
 	"bufio"
 	"io"
 	"os"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 type config struct {
-	trackerAddr			[]string
-	maxConns			int
+	trackerAddr []string
+	maxConns    int
 }
 
 func newConfig(configName string) (*config, error) {
 	config := &config{}
 	f, err := os.Open(configName)
 	if err != nil {
-		return nil, err 
+		return nil, err
 	}
 	reader := bufio.NewReader(f)
 	for {
@@ -28,10 +28,10 @@ func newConfig(configName string) (*config, error) {
 		case "tracker_server":
 			config.trackerAddr = append(config.trackerAddr, str[1])
 		case "maxConns":
-			config.maxConns,err = strconv.Atoi(str[1])
+			config.maxConns, err = strconv.Atoi(str[1])
 			if err != nil {
 				return nil, err
-            }
+			}
 		}
 		if err != nil {
 			if err == io.EOF {

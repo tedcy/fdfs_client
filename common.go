@@ -1,27 +1,27 @@
 package fdfs_client
 
 import (
-	"os"
-	"net"
 	"bytes"
 	"encoding/binary"
-	"strings"
 	"fmt"
+	"net"
+	"os"
+	"strings"
 )
 
 const (
-	TRACKER_PROTO_CMD_RESP									= 100
+	TRACKER_PROTO_CMD_RESP                                  = 100
 	TRACKER_PROTO_CMD_SERVICE_QUERY_STORE_WITHOUT_GROUP_ONE = 101
-	TRACKER_PROTO_CMD_SERVICE_QUERY_FETCH_ONE				= 102
+	TRACKER_PROTO_CMD_SERVICE_QUERY_FETCH_ONE               = 102
 
-	STORAGE_PROTO_CMD_UPLOAD_FILE							= 11
-	STORAGE_PROTO_CMD_DELETE_FILE							= 12
-	STORAGE_PROTO_CMD_DOWNLOAD_FILE							= 14
-	FDFS_PROTO_CMD_ACTIVE_TEST								= 111
+	STORAGE_PROTO_CMD_UPLOAD_FILE   = 11
+	STORAGE_PROTO_CMD_DELETE_FILE   = 12
+	STORAGE_PROTO_CMD_DOWNLOAD_FILE = 14
+	FDFS_PROTO_CMD_ACTIVE_TEST      = 111
 )
 
 const (
-	FDFS_GROUP_NAME_MAX_LEN									= 16
+	FDFS_GROUP_NAME_MAX_LEN = 16
 )
 
 type storageInfo struct {
@@ -31,12 +31,12 @@ type storageInfo struct {
 
 type fileInfo struct {
 	fileSize    int64
-	buffer		[]byte
+	buffer      []byte
 	file        *os.File
 	fileExtName string
 }
 
-func newFileInfo(fileName string,buffer []byte,fileExtName string) (*fileInfo, error) {
+func newFileInfo(fileName string, buffer []byte, fileExtName string) (*fileInfo, error) {
 	if fileName != "" {
 		file, err := os.Open(fileName)
 		if err != nil {
@@ -67,19 +67,19 @@ func newFileInfo(fileName string,buffer []byte,fileExtName string) (*fileInfo, e
 		fileExtName = fileExtName[:6]
 	}
 	return &fileInfo{
-		fileSize:		int64(len(buffer)),
-		buffer:			buffer,
-		fileExtName:	fileExtName,
-    },nil
+		fileSize:    int64(len(buffer)),
+		buffer:      buffer,
+		fileExtName: fileExtName,
+	}, nil
 }
 
 func (this *fileInfo) Close() {
 	if this == nil {
 		return
-    }
+	}
 	if this.file != nil {
 		this.file.Close()
-    }
+	}
 	return
 }
 
@@ -128,17 +128,17 @@ func (this *header) RecvHeader(conn net.Conn) error {
 		return err
 	}
 	if status != 0 {
-		return fmt.Errorf("recv resp status %d != 0",status)
-    }
+		return fmt.Errorf("recv resp status %d != 0", status)
+	}
 	this.cmd = int8(cmd)
 	this.status = int8(status)
 	return nil
 }
 
-func splitFileId(fileId string) (string,string,error) {
-	str := strings.SplitN(fileId,"/",2)
+func splitFileId(fileId string) (string, string, error) {
+	str := strings.SplitN(fileId, "/", 2)
 	if len(str) < 2 {
-		return "","",fmt.Errorf("invalid fildId")
-    }
-	return str[0],str[1],nil
+		return "", "", fmt.Errorf("invalid fildId")
+	}
+	return str[0], str[1], nil
 }
