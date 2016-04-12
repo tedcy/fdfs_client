@@ -12,10 +12,10 @@ import (
 type storageUploadTask struct {
 	header
 	//req
-	fileInfo *fileInfo
-	storagePathIndex int8
+	fileInfo				*fileInfo
+	storagePathIndex		int8
 	//res
-	fileId *FileId
+	fileId					string
 }
 
 func (this *storageUploadTask) SendReq(conn net.Conn) error {
@@ -42,8 +42,13 @@ func (this *storageUploadTask) SendReq(conn net.Conn) error {
 		return err
 	}
 
+	var err error
 	//send file
-	_, err := conn.(pConn).Conn.(*net.TCPConn).ReadFrom(this.fileInfo.file)
+	if this.fileInfo.file != nil {
+		_, err = conn.(pConn).Conn.(*net.TCPConn).ReadFrom(this.fileInfo.file)
+    }else {
+		_, err = conn.Write(this.fileInfo.buffer)
+    }
 
 	if err != nil {
 		return err
@@ -78,22 +83,20 @@ func (this *storageUploadTask) RecvRes(conn net.Conn) error {
 		return err
 	}
 
-	this.fileId = &FileId{
-		GroupName:      groupName,
-		RemoteFileName: remoteFileName,
-	}
+	this.fileId = groupName + "/" + remoteFileName
 	return nil
 }
 
 type storageDownloadTask struct {
 	header
 	//req
-	groupName string
-	remoteFilename string
-	offset int64
-	downloadBytes int64
+	groupName				string
+	remoteFilename			string
+	offset					int64
+	downloadBytes			int64
 	//res
-	localFilename string
+	localFilename			string
+    buffer					[]byte
 }
 
 func (this *storageDownloadTask) SendReq(conn net.Conn) error{
@@ -126,8 +129,21 @@ func (this *storageDownloadTask) SendReq(conn net.Conn) error{
 
 func (this *storageDownloadTask) RecvRes(conn net.Conn) error{
 	if err := this.RecvHeader(conn);err != nil {
-		return fmt.Errorf("StorageDownloadTask RecvFile %v",err)
+		return fmt.Errorf("StorageDownloadTask RecvRes %v",err)
     }
+	if this.localFilename != "" {
+		if err := this.recvFile(conn);err != nil {
+			return fmt.Errorf("StorageDownloadTask RecvRes %v",err)
+        }
+    }else {
+		if err := this.recvBuffer(conn);err != nil {
+			return fmt.Errorf("StorageDownloadTask RecvRes %v",err)
+        }
+    }
+	return nil
+}
+
+func (this *storageDownloadTask) recvFile(conn net.Conn) error{
 	file, err := os.Create(this.localFilename)
 	defer file.Close()
 	if err != nil {
@@ -145,24 +161,21 @@ func (this *storageDownloadTask) RecvRes(conn net.Conn) error{
 	return nil
 }
 
-func (this *storageDownloadTask) recvBuffer(conn net.Conn) ([]byte,error){
-	if err := this.RecvHeader(conn);err != nil {
-		return nil,fmt.Errorf("StorageDownloadTask RecvBuffer %v",err)
-    }
-
+func (this *storageDownloadTask) recvBuffer(conn net.Conn) error{
 	writer := new(bytes.Buffer)
 	
 	if err := writeFromConn(conn, writer, this.pkgLen);err != nil {
-		return nil,fmt.Errorf("StorageDownloadTask RecvBuffer %v",err)
+		return fmt.Errorf("StorageDownloadTask RecvBuffer %v",err)
     }
-	return writer.Bytes(),nil
+	this.buffer = writer.Bytes()
+	return nil
 }
 
 type storageDeleteTask struct {
 	header
 	//req
-	groupName string
-	remoteFilename string
+	groupName				string
+	remoteFilename			string
 }
 
 func (this *storageDeleteTask) SendReq(conn net.Conn) error{

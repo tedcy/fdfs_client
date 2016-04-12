@@ -48,16 +48,16 @@ func (this *Client) Destory() {
     }
 }
 
-func (this *Client) UploadByFilename(fileName string) (*FileId, error) {
-	fileInfo, err := newFileInfo(fileName)
+func (this *Client) UploadByFilename(fileName string) (string, error) {
+	fileInfo, err := newFileInfo(fileName, nil, "")
 	defer fileInfo.Close()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	storageInfo, err := this.queryStorageInfoWithTracker(TRACKER_PROTO_CMD_SERVICE_QUERY_STORE_WITHOUT_GROUP_ONE,"","")
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	task := &storageUploadTask{}
@@ -66,12 +66,34 @@ func (this *Client) UploadByFilename(fileName string) (*FileId, error) {
 	task.storagePathIndex = storageInfo.storagePathIndex
 
 	if err := this.doStorage(task, storageInfo);err != nil {
-		return nil, err
+		return "", err
     }
 	return task.fileId,nil
 }
 
-func (this *Client) DownloadByFileId(fileId string,localFilename string) error {
+func (this *Client) UploadByBuffer(buffer []byte,fileExtName string) (string, error) {
+	fileInfo, err := newFileInfo("", buffer, fileExtName)
+	defer fileInfo.Close()
+	if err != nil {
+		return "", err
+	}
+	storageInfo, err := this.queryStorageInfoWithTracker(TRACKER_PROTO_CMD_SERVICE_QUERY_STORE_WITHOUT_GROUP_ONE,"","")
+	if err != nil {
+		return "", err
+	}
+
+	task := &storageUploadTask{}
+	//req
+	task.fileInfo = fileInfo
+	task.storagePathIndex = storageInfo.storagePathIndex
+
+	if err := this.doStorage(task, storageInfo);err != nil {
+		return "", err
+    }
+	return task.fileId,nil
+}
+
+func (this *Client) DownloadToFile(fileId string,localFilename string,offset int64,downloadBytes int64) error {
 	groupName, remoteFilename, err := splitFileId(fileId)
 	if err != nil {
 		return err
@@ -85,8 +107,8 @@ func (this *Client) DownloadByFileId(fileId string,localFilename string) error {
 	//req
 	task.groupName = groupName
 	task.remoteFilename = remoteFilename
-	//task.offset = 0
-	//task.downloadBytes = 0
+	task.offset = offset
+	task.downloadBytes = downloadBytes
 
 	//res
 	task.localFilename = localFilename
@@ -94,7 +116,32 @@ func (this *Client) DownloadByFileId(fileId string,localFilename string) error {
 	return this.doStorage(task, storageInfo)
 }
 
-func (this *Client) DeleteByFileId(fileId string) error {
+//deprecated
+func (this *Client) DownloadToBuffer(fileId string,offset int64,downloadBytes int64) ([]byte,error) {
+	groupName, remoteFilename, err := splitFileId(fileId)
+	if err != nil {
+		return nil, err
+	}
+	storageInfo, err := this.queryStorageInfoWithTracker(TRACKER_PROTO_CMD_SERVICE_QUERY_FETCH_ONE,groupName,remoteFilename)
+	if err != nil {
+		return nil, err
+	}
+
+	task := &storageDownloadTask{}
+	//req
+	task.groupName = groupName
+	task.remoteFilename = remoteFilename
+	task.offset = offset
+	task.downloadBytes = downloadBytes
+
+	//res
+	if err := this.doStorage(task, storageInfo);err != nil {
+		return nil, err
+    }
+	return task.buffer, nil
+}
+
+func (this *Client) DeleteFile(fileId string) error {
 	groupName, remoteFilename, err := splitFileId(fileId)
 	if err != nil {
 		return err

@@ -8,17 +8,17 @@ import (
 )
 
 type trackerStorageInfo struct {
-	groupName			string
-	ipAddr				string
-	port				int64
-	storePathIndex		int8
+	groupName				string
+	ipAddr					string
+	port					int64
+	storePathIndex			int8
 }
 
 type trackerTask struct {
 	header
 	//req
-	groupName			string
-	remoteFilename		string
+	groupName				string
+	remoteFilename			string
 	//res
 	trackerStorageInfo
 }

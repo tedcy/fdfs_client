@@ -24,11 +24,6 @@ const (
 	FDFS_GROUP_NAME_MAX_LEN									= 16
 )
 
-type FileId struct {
-	GroupName		string
-	RemoteFileName  string
-}
-
 type storageInfo struct {
 	addr             string
 	storagePathIndex int8
@@ -36,35 +31,46 @@ type storageInfo struct {
 
 type fileInfo struct {
 	fileSize    int64
+	buffer		[]byte
 	file        *os.File
 	fileExtName string
 }
 
-func newFileInfo(fileName string) (*fileInfo, error) {
-	file, err := os.Open(fileName)
-	if err != nil {
-		return nil, err
-	}
-	stat, err := file.Stat()
-	if err != nil {
-		return nil, err
-	}
-	if int(stat.Size()) == 0 {
-		return nil, fmt.Errorf("file %q size is zero", fileName)
-	}
-	var fileExtName string
-	index := strings.LastIndexByte(fileName, '.')
-	if index != -1 {
-		fileExtName = fileName[index+1:]
-		if len(fileExtName) > 6 {
-			fileExtName = fileExtName[:6]
+func newFileInfo(fileName string,buffer []byte,fileExtName string) (*fileInfo, error) {
+	if fileName != "" {
+		file, err := os.Open(fileName)
+		if err != nil {
+			return nil, err
 		}
+		stat, err := file.Stat()
+		if err != nil {
+			return nil, err
+		}
+		if int(stat.Size()) == 0 {
+			return nil, fmt.Errorf("file %q size is zero", fileName)
+		}
+		var fileExtName string
+		index := strings.LastIndexByte(fileName, '.')
+		if index != -1 {
+			fileExtName = fileName[index+1:]
+			if len(fileExtName) > 6 {
+				fileExtName = fileExtName[:6]
+			}
+		}
+		return &fileInfo{
+			fileSize:    stat.Size(),
+			file:        file,
+			fileExtName: fileExtName,
+		}, nil
+	}
+	if len(fileExtName) > 6 {
+		fileExtName = fileExtName[:6]
 	}
 	return &fileInfo{
-		fileSize:    stat.Size(),
-		file:        file,
-		fileExtName: fileExtName,
-	}, nil
+		fileSize:		int64(len(buffer)),
+		buffer:			buffer,
+		fileExtName:	fileExtName,
+    },nil
 }
 
 func (this *fileInfo) Close() {
@@ -122,7 +128,7 @@ func (this *header) RecvHeader(conn net.Conn) error {
 		return err
 	}
 	if status != 0 {
-		return fmt.Errorf("recv resp status != 0")
+		return fmt.Errorf("recv resp status %d != 0",status)
     }
 	this.cmd = int8(cmd)
 	this.status = int8(status)

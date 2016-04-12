@@ -26,8 +26,8 @@ type writer interface {
 }
 
 func writeFromConn(conn net.Conn,writer writer,size int64) error {
-	buf := make([]byte, 4096)
 	sizeRecv,sizeAll := int64(0),size
+	buf := make([]byte, 4096)
 	for ;sizeRecv + 4096 <= sizeAll;{
 		recv, err := conn.Read(buf)
 		if err != nil {
