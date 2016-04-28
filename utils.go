@@ -35,21 +35,23 @@ func writeFromConn(conn net.Conn, writer writer, size int64) error {
 	for {
 		if sizeRecv+4096 <= sizeAll {
 			recv, err = conn.Read(buf)
+			if err != nil {
+				return err
+			}
+			if _, err = writer.Write(buf); err != nil {
+				return err
+			}
+			sizeRecv += int64(recv)
 		} else {
 			recv, err = conn.Read(buf[:sizeAll-sizeRecv])
-			break
+			if err != nil {
+				return err
+			}
+			if _, err := writer.Write(buf[:sizeAll-sizeRecv]); err != nil {
+				return err
+			}
+			return nil
 		}
-		if err != nil {
-			return err
-		}
-		if _, err = writer.Write(buf); err != nil {
-			return err
-		}
-		sizeRecv += int64(recv)
 	}
-	if _, err := writer.Write(buf); err != nil {
-		return err
-	}
-
 	return nil
 }
