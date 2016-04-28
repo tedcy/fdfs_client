@@ -28,30 +28,28 @@ func writeFromConn(conn net.Conn, writer writer, size int64) error {
 	var (
 		err  error
 		recv int
+		needRecv int64
 	)
 	sizeRecv, sizeAll := int64(0), size
 	buf := make([]byte, 4096)
 
 	for {
-		if sizeRecv+4096 <= sizeAll {
-			recv, err = conn.Read(buf)
-			if err != nil {
-				return err
-			}
-			if _, err = writer.Write(buf); err != nil {
-				return err
-			}
-			sizeRecv += int64(recv)
-		} else {
-			recv, err = conn.Read(buf[:sizeAll-sizeRecv])
-			if err != nil {
-				return err
-			}
-			if _, err := writer.Write(buf[:sizeAll-sizeRecv]); err != nil {
-				return err
-			}
-			return nil
+		needRecv = sizeAll - sizeRecv
+		if needRecv <= 0 {
+			break
+        }
+		if needRecv > 4096 {
+			needRecv = 4096
+        }
+		recv, err = conn.Read(buf[:needRecv])
+		if err != nil {
+			return err
 		}
+		_, err = writer.Write(buf[:recv])
+		if err != nil {
+			return err
+		}
+		sizeRecv += int64(recv)
 	}
 	return nil
 }
