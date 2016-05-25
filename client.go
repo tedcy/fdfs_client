@@ -141,6 +141,31 @@ func (this *Client) DownloadToBuffer(fileId string, offset int64, downloadBytes 
 	return task.buffer, nil
 }
 
+func (this *Client) DownloadToAllocatedBuffer(fileId string, buffer []byte,offset int64, downloadBytes int64) (error) {
+	groupName, remoteFilename, err := splitFileId(fileId)
+	if err != nil {
+		return err
+	}
+	storageInfo, err := this.queryStorageInfoWithTracker(TRACKER_PROTO_CMD_SERVICE_QUERY_FETCH_ONE, groupName, remoteFilename)
+	if err != nil {
+		return err
+	}
+
+	task := &storageDownloadTask{}
+	//req
+	task.groupName = groupName
+	task.remoteFilename = remoteFilename
+	task.offset = offset
+	task.downloadBytes = downloadBytes
+	task.buffer = buffer					//allocate buffer by user
+
+	//res
+	if err := this.doStorage(task, storageInfo); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (this *Client) DeleteFile(fileId string) error {
 	groupName, remoteFilename, err := splitFileId(fileId)
 	if err != nil {

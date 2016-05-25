@@ -153,19 +153,32 @@ func (this *storageDownloadTask) recvFile(conn net.Conn) error {
 	writer := bufio.NewWriter(file)
 
 	if err := writeFromConn(conn, writer, this.pkgLen); err != nil {
-		return fmt.Errorf("StorageDownloadTask RecvFile %v", err)
+		return fmt.Errorf("StorageDownloadTask RecvFile %s", err)
 	}
 	if err := writer.Flush(); err != nil {
-		return fmt.Errorf("StorageDownloadTask RecvFile %v", err)
+		return fmt.Errorf("StorageDownloadTask RecvFile %s", err)
 	}
 	return nil
 }
 
 func (this *storageDownloadTask) recvBuffer(conn net.Conn) error {
+	var (
+		err				error
+	)
+	//buffer allocate by user
+	if this.buffer != nil {
+		if int64(len(this.buffer)) < this.pkgLen {
+			return fmt.Errorf("StorageDownloadTask buffer < pkgLen can't recv")
+        }
+		if err = writeFromConnToBuffer(conn, this.buffer, this.pkgLen); err != nil {
+			return fmt.Errorf("StorageDownloadTask writeFromConnToBuffer %s", err)
+        }
+		return nil
+    }
 	writer := new(bytes.Buffer)
 
-	if err := writeFromConn(conn, writer, this.pkgLen); err != nil {
-		return fmt.Errorf("StorageDownloadTask RecvBuffer %v", err)
+	if err = writeFromConn(conn, writer, this.pkgLen); err != nil {
+		return fmt.Errorf("StorageDownloadTask RecvBuffer %s", err)
 	}
 	this.buffer = writer.Bytes()
 	return nil

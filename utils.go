@@ -24,6 +24,28 @@ type writer interface {
 	Write(p []byte) (int, error)
 }
 
+func writeFromConnToBuffer(conn net.Conn, buffer []byte, size int64) error {
+	var (
+		err  error
+		recv int
+		needRecv int64
+	)
+	sizeRecv, sizeAll := int64(0), size
+
+	for {
+		needRecv = sizeAll - sizeRecv
+		if needRecv <= 0 {
+			break
+        }
+		recv, err = conn.Read(buffer[sizeRecv:sizeRecv + needRecv])
+		if err != nil {
+			return err
+		}
+		sizeRecv += int64(recv)
+	}
+	return nil
+}
+
 func writeFromConn(conn net.Conn, writer writer, size int64) error {
 	var (
 		err  error
