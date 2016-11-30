@@ -186,10 +186,11 @@ func (this *Client) DeleteFile(fileId string) error {
 
 func (this *Client) doTracker(task task) error {
 	trackerConn, err := this.getTrackerConn()
-	defer trackerConn.Close()
 	if err != nil {
 		return err
 	}
+	defer trackerConn.Close()
+	
 	if err := task.SendReq(trackerConn); err != nil {
 		return err
 	}
@@ -202,10 +203,11 @@ func (this *Client) doTracker(task task) error {
 
 func (this *Client) doStorage(task task, storageInfo *storageInfo) error {
 	storageConn, err := this.getStorageConn(storageInfo)
-	defer storageConn.Close()
 	if err != nil {
 		return err
 	}
+	defer storageConn.Close()
+	
 	if err := task.SendReq(storageConn); err != nil {
 		return err
 	}
