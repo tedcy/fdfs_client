@@ -34,9 +34,6 @@ func newConnPool(addr string, maxConns int) (*connPool, error) {
 	if maxConns < MAXCONNS_LEAST {
 		return nil, fmt.Errorf("too little maxConns < %d", MAXCONNS_LEAST)
 	}
-	if maxConns < 1 {
-		return nil, fmt.Errorf("too little maxConns < 1")
-	}
 	connPool := &connPool{
 		conns:    list.New(),
 		addr:     addr,
