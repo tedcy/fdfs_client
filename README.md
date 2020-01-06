@@ -1,4 +1,4 @@
-#fdfs_client.go
+# fdfs_client.go
 
 fastdfs go client implement
 
@@ -20,7 +20,7 @@ you can implement append with delete origin && upload new again
 
 **5 details see client_test.go,good luck ^_^**
 
-##$ go get github.com/tedcy/fdfs_client
+## $ go get github.com/tedcy/fdfs_client
 
-#Author
+# Author
 yue.cheng.ted@gmail.com
