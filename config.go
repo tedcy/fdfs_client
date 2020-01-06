@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"runtime"
 )
 
 type config struct {
@@ -19,10 +20,14 @@ func newConfig(configName string) (*config, error) {
 	if err != nil {
 		return nil, err
 	}
+	splitFlag := "\n"
+	if runtime.GOOS == "windows" {
+		splitFlag = "\r\n"
+	}
 	reader := bufio.NewReader(f)
 	for {
 		line, err := reader.ReadString('\n')
-		line = strings.TrimSuffix(line, "\n")
+		line = strings.TrimSuffix(line, splitFlag)
 		str := strings.SplitN(line, "=", 2)
 		switch str[0] {
 		case "tracker_server":
